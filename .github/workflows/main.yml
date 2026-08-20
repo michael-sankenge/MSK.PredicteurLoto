@@ -35,12 +35,32 @@ jobs:
     - name: Installer la charge Android
       run: dotnet workload install android
 
-    - name: Appliquer Android API 34 au projet
+    - name: Configurer le projet et générer le Manifest Android
       run: |
         python3 -c "
-        import glob
+        import glob, os
+
+        manifest = '''<?xml version=\"1.0\" encoding=\"utf-8\"?>
+        <manifest xmlns:android=\"http://schemas.android.com/apk/res/android\" package=\"com.msk.predicteurloto\">
+            <uses-sdk android:minSdkVersion=\"21\" android:targetSdkVersion=\"34\" />
+            <application android:allowBackup=\"true\" android:label=\"MSK PredicteurLoto\" android:supportsRtl=\"true\">
+            </application>
+        </manifest>'''
+
         for file in glob.glob('**/*.csproj', recursive=True):
             if 'bin' in file or 'obj' in file: continue
+            proj_dir = os.path.dirname(file)
+            
+            # Création du manifest aux endroits attendus
+            with open(os.path.join(proj_dir, 'AndroidManifest.xml'), 'w', encoding='utf-8') as f:
+                f.write(manifest)
+            
+            props_dir = os.path.join(proj_dir, 'Properties')
+            os.makedirs(props_dir, exist_ok=True)
+            with open(os.path.join(props_dir, 'AndroidManifest.xml'), 'w', encoding='utf-8') as f:
+                f.write(manifest)
+
+            # Écriture du fichier .csproj
             content = '''<Project Sdk=\"Microsoft.NET.Sdk\">
           <PropertyGroup>
             <TargetFramework>net8.0-android34.0</TargetFramework>
@@ -50,6 +70,7 @@ jobs:
             <ImplicitUsings>enable</ImplicitUsings>
             <CheckEolTargetFramework>false</CheckEolTargetFramework>
             <SuppressNETSDK1202>true</SuppressNETSDK1202>
+            <AndroidManifest>AndroidManifest.xml</AndroidManifest>
           </PropertyGroup>
 
           <ItemGroup>
