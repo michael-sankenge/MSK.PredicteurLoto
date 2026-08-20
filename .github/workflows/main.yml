@@ -28,10 +28,10 @@ jobs:
       run: dotnet workload install android
 
     - name: Restaurer les dépendances
-      run: dotnet restore
+      run: dotnet restore MSK.PredicteurLoto/MSK.PredicteurLoto.csproj
 
     - name: Compiler le fichier APK Android
-      run: dotnet publish -f net8.0-android31.0 -c Release -p:AndroidPackageFormat=apk
+      run: dotnet publish MSK.PredicteurLoto/MSK.PredicteurLoto.csproj -f net8.0-android -c Release -p:AndroidPackageFormat=apk
 
     - name: Sauvegarder l'APK généré
       uses: actions/upload-artifact@v4
