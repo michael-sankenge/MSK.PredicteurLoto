@@ -9,6 +9,9 @@ jobs:
   build-android:
     runs-on: ubuntu-latest
 
+    env:
+      MSBUILDDISABLENETSDKEOLERRORS: "true"
+
     steps:
     - name: Récupérer le code
       uses: actions/checkout@v4
@@ -24,6 +27,11 @@ jobs:
       with:
         dotnet-version: '8.0.x'
 
+    - name: Forcer l'utilisation exclusive du SDK .NET 8
+      run: |
+        DOTNET_VERSION=$(dotnet --version)
+        echo "{\"sdk\": {\"version\": \"$DOTNET_VERSION\", \"rollForward\": \"latestFeature\"}}" > global.json
+
     - name: Installer la charge Android
       run: dotnet workload install android
 
@@ -37,6 +45,7 @@ jobs:
             <SupportedOSPlatformVersion>21.0</SupportedOSPlatformVersion>
             <TargetPlatformVersion>34.0</TargetPlatformVersion>
             <CheckEolTargetFramework>false</CheckEolTargetFramework>
+            <SuppressNETSDK1202>true</SuppressNETSDK1202>
             <OutputType>Exe</OutputType>
             <Nullable>enable</Nullable>
             <ImplicitUsings>enable</ImplicitUsings>
@@ -57,7 +66,7 @@ jobs:
     - name: Compiler l'APK
       run: |
         CSPROJ_FILE=$(find . -name "*.csproj" -not -path "*/obj/*" -not -path "*/bin/*" | head -n 1)
-        dotnet publish "$CSPROJ_FILE" -c Release -p:AndroidPackageFormat=apk -p:CheckEolTargetFramework=false -p:TargetPlatformVersion=34.0
+        dotnet publish "$CSPROJ_FILE" -c Release -p:AndroidPackageFormat=apk -p:CheckEolTargetFramework=false -p:SuppressNETSDK1202=true
 
     - name: Sauvegarder l'APK généré
       uses: actions/upload-artifact@v4
