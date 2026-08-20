@@ -1,0 +1,34 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Récupérer le code
+      uses: actions/checkout@v4
+
+    - name: Configurer .NET 8
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Installer la charge Android
+      run: dotnet workload install android
+
+    - name: Restaurer les dépendances
+      run: dotnet restore
+
+    - name: Compiler le fichier APK Android
+      run: dotnet publish -f net8.0-android -c Release
+
+    - name: Sauvegarder l'APK généré
+      uses: actions/upload-artifact@v4
+      with:
+        name: Application-Android-APK
+        path: '**/*.apk'
