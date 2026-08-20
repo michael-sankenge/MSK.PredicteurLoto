@@ -27,10 +27,36 @@ jobs:
     - name: Installer la charge Android
       run: dotnet workload install android
 
-    - name: Trouver et compiler le projet en APK
+    - name: Corriger le fichier projet et compiler
       run: |
         CSPROJ_FILE=$(find . -name "*.csproj" -not -path "*/obj/*" -not -path "*/bin/*" | head -n 1)
-        echo "Fichier projet trouvé : $CSPROJ_FILE"
+        echo "Modification automatique de : $CSPROJ_FILE"
+
+        cat << 'EOF' > "$CSPROJ_FILE"
+        <Project Sdk="Microsoft.NET.Sdk">
+          <PropertyGroup>
+            <TargetFrameworks>net8.0;net8.0-android31.0</TargetFrameworks>
+            <OutputType>Exe</OutputType>
+            <Nullable>enable</Nullable>
+            <ImplicitUsings>enable</ImplicitUsings>
+            <SupportedOSPlatformVersion>21.0</SupportedOSPlatformVersion>
+            <TargetPlatformVersion>31.0</TargetPlatformVersion>
+          </PropertyGroup>
+
+          <ItemGroup>
+            <PackageReference Include="Avalonia" Version="11.0.10" />
+            <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.0.10" />
+            <PackageReference Include="Avalonia.Desktop" Version="11.0.10" />
+            <PackageReference Include="Avalonia.ReactiveUI" Version="11.0.10" />
+            <PackageReference Include="Avalonia.Fonts.Inter" Version="11.0.10" />
+          </ItemGroup>
+
+          <ItemGroup Condition="'$(TargetFramework)' == 'net8.0-android31.0'">
+            <PackageReference Include="Avalonia.Android" Version="11.0.10" />
+          </ItemGroup>
+        </Project>
+        EOF
+
         dotnet publish "$CSPROJ_FILE" -f net8.0-android31.0 -c Release -p:AndroidPackageFormat=apk
 
     - name: Sauvegarder l'APK généré
