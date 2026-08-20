@@ -79,7 +79,7 @@ jobs:
             if modified:
                 with open(f, 'w', encoding='utf-8') as file: file.write(c)
 
-        # 4. Génération Manifest et mise à jour du .csproj
+        # 4. Génération Manifest et mise à jour du .csproj sans Trimming
         for file in glob.glob('**/*.csproj', recursive=True):
             if 'bin' in file or 'obj' in file: continue
             proj_dir = os.path.dirname(file)
@@ -101,6 +101,8 @@ jobs:
             <ImplicitUsings>enable</ImplicitUsings>
             <CheckEolTargetFramework>false</CheckEolTargetFramework>
             <SuppressNETSDK1202>true</SuppressNETSDK1202>
+            <PublishTrimmed>false</PublishTrimmed>
+            <RunAOTCompilation>false</RunAOTCompilation>
             <AndroidManifest>AndroidManifest.xml</AndroidManifest>
           </PropertyGroup>
 
@@ -121,7 +123,7 @@ jobs:
     - name: Compiler l'APK
       run: |
         CSPROJ=$(find . -name "*.csproj" -not -path "*/obj/*" -not -path "*/bin/*" | head -n 1)
-        dotnet publish "$CSPROJ" -c Release -p:AndroidPackageFormat=apk -p:CheckEolTargetFramework=false -p:SuppressNETSDK1202=true
+        dotnet publish "$CSPROJ" -c Release -p:AndroidPackageFormat=apk -p:CheckEolTargetFramework=false -p:SuppressNETSDK1202=true -p:PublishTrimmed=false -p:RunAOTCompilation=false
 
     - name: Sauvegarder l'APK généré
       uses: actions/upload-artifact@v4
