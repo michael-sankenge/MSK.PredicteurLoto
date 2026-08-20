@@ -37,7 +37,7 @@ jobs:
     - name: Préparer le projet et appliquer tous les correctifs
       run: |
         cat << 'EOF' > fix_script.py
-        import glob, os
+        import glob, os, re
 
         manifest = '''<?xml version="1.0" encoding="utf-8"?>
         <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.msk.predicteurloto">
@@ -62,8 +62,8 @@ jobs:
             c = c.replace('Build(object data)', 'Build(object? data)').replace('Match(object data)', 'Match(object? data)')
             with open(f, 'w', encoding='utf-8') as file: file.write(c)
 
-        # 3. Correction DataGrid.Items -> DataGrid.ItemsSource (.cs et .axaml)
-        for f in glob.glob('**/*.cs', recursive=True) + glob.glob('**/*.axaml', recursive=True):
+        # 3. Corrections AXAML et C# (DataGrid.ItemsSource et FluentTheme Mode)
+        for f in glob.glob('**/*.axaml', recursive=True) + glob.glob('**/*.cs', recursive=True):
             if 'bin' in f or 'obj' in f: continue
             with open(f, 'r', encoding='utf-8') as file: c = file.read()
             modified = False
@@ -72,6 +72,9 @@ jobs:
                 modified = True
             if 'Items="' in c:
                 c = c.replace('Items="', 'ItemsSource="')
+                modified = True
+            if 'FluentTheme' in c and 'Mode="' in c:
+                c = re.sub(r'(<FluentTheme[^>]*?)\s+Mode="[^"]*"', r'\1', c)
                 modified = True
             if modified:
                 with open(f, 'w', encoding='utf-8') as file: file.write(c)
