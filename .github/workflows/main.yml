@@ -16,6 +16,10 @@ jobs:
     - name: Récupérer le code
       uses: actions/checkout@v4
 
+    - name: Bloquer le SDK 10 et forcer .NET 8
+      run: |
+        echo '{"sdk":{"version":"8.0.100","rollForward":"latestFeature"}}' > global.json
+
     - name: Configurer Java JDK 17
       uses: actions/setup-java@v4
       with:
@@ -26,47 +30,45 @@ jobs:
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '8.0.x'
-
-    - name: Forcer l'utilisation exclusive du SDK .NET 8
-      run: |
-        DOTNET_VERSION=$(dotnet --version)
-        echo "{\"sdk\": {\"version\": \"$DOTNET_VERSION\", \"rollForward\": \"latestFeature\"}}" > global.json
+        global-json-file: global.json
 
     - name: Installer la charge Android
       run: dotnet workload install android
 
-    - name: Générer la configuration projet corrigée
+    - name: Appliquer Android API 34 au projet
       run: |
-        CSPROJ_FILE=$(find . -name "*.csproj" -not -path "*/obj/*" -not -path "*/bin/*" | head -n 1)
-        cat << 'EOF' > "$CSPROJ_FILE"
-        <Project Sdk="Microsoft.NET.Sdk">
+        python3 -c "
+        import glob
+        for file in glob.glob('**/*.csproj', recursive=True):
+            if 'bin' in file or 'obj' in file: continue
+            content = '''<Project Sdk=\"Microsoft.NET.Sdk\">
           <PropertyGroup>
             <TargetFramework>net8.0-android34.0</TargetFramework>
             <SupportedOSPlatformVersion>21.0</SupportedOSPlatformVersion>
-            <TargetPlatformVersion>34.0</TargetPlatformVersion>
-            <CheckEolTargetFramework>false</CheckEolTargetFramework>
-            <SuppressNETSDK1202>true</SuppressNETSDK1202>
             <OutputType>Exe</OutputType>
             <Nullable>enable</Nullable>
             <ImplicitUsings>enable</ImplicitUsings>
-            <ApplicationId>com.msk.predicteurloto</ApplicationId>
+            <CheckEolTargetFramework>false</CheckEolTargetFramework>
+            <SuppressNETSDK1202>true</SuppressNETSDK1202>
           </PropertyGroup>
 
           <ItemGroup>
-            <PackageReference Include="Avalonia" Version="11.1.3" />
-            <PackageReference Include="Avalonia.Android" Version="11.1.3" />
-            <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.1.3" />
-            <PackageReference Include="Avalonia.Desktop" Version="11.1.3" />
-            <PackageReference Include="Avalonia.ReactiveUI" Version="11.1.3" />
-            <PackageReference Include="Avalonia.Fonts.Inter" Version="11.1.3" />
+            <PackageReference Include=\"Avalonia\" Version=\"11.1.3\" />
+            <PackageReference Include=\"Avalonia.Android\" Version=\"11.1.3\" />
+            <PackageReference Include=\"Avalonia.Controls.DataGrid\" Version=\"11.1.3\" />
+            <PackageReference Include=\"Avalonia.Desktop\" Version=\"11.1.3\" />
+            <PackageReference Include=\"Avalonia.ReactiveUI\" Version=\"11.1.3\" />
+            <PackageReference Include=\"Avalonia.Fonts.Inter\" Version=\"11.1.3\" />
           </ItemGroup>
-        </Project>
-        EOF
+        </Project>'''
+            with open(file, 'w', encoding='utf-8') as f:
+                f.write(content)
+        "
 
     - name: Compiler l'APK
       run: |
-        CSPROJ_FILE=$(find . -name "*.csproj" -not -path "*/obj/*" -not -path "*/bin/*" | head -n 1)
-        dotnet publish "$CSPROJ_FILE" -c Release -p:AndroidPackageFormat=apk -p:CheckEolTargetFramework=false -p:SuppressNETSDK1202=true
+        CSPROJ=$(find . -name "*.csproj" -not -path "*/obj/*" -not -path "*/bin/*" | head -n 1)
+        dotnet publish "$CSPROJ" -c Release -p:AndroidPackageFormat=apk -p:CheckEolTargetFramework=false -p:SuppressNETSDK1202=true
 
     - name: Sauvegarder l'APK généré
       uses: actions/upload-artifact@v4
