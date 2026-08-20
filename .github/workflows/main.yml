@@ -27,40 +27,35 @@ jobs:
     - name: Installer la charge Android
       run: dotnet workload install android
 
-    - name: Réécriture propre du projet
+    - name: Configurer le projet Android
       run: |
-        python3 -c "
-        import glob
-        for path in glob.glob('**/*.csproj', recursive=True):
-            if 'bin' in path or 'obj' in path: continue
-            with open(path, 'w') as f:
-                f.write('''<Project Sdk=\"Microsoft.NET.Sdk\">
+        CSPROJ_FILE=$(find . -name "*.csproj" -not -path "*/obj/*" -not -path "*/bin/*" | head -n 1)
+        cat << 'EOF' > "$CSPROJ_FILE"
+        <Project Sdk="Microsoft.NET.Sdk">
           <PropertyGroup>
-            <TargetFrameworks>net8.0;net8.0-android</TargetFrameworks>
+            <TargetFramework>net8.0-android</TargetFramework>
+            <SupportedOSPlatformVersion>21.0</SupportedOSPlatformVersion>
             <OutputType>Exe</OutputType>
             <Nullable>enable</Nullable>
             <ImplicitUsings>enable</ImplicitUsings>
-            <SupportedOSPlatformVersion>21.0</SupportedOSPlatformVersion>
+            <ApplicationId>com.msk.predicteurloto</ApplicationId>
           </PropertyGroup>
 
           <ItemGroup>
-            <PackageReference Include=\"Avalonia\" Version=\"11.0.10\" />
-            <PackageReference Include=\"Avalonia.Controls.DataGrid\" Version=\"11.0.10\" />
-            <PackageReference Include=\"Avalonia.Desktop\" Version=\"11.0.10\" />
-            <PackageReference Include=\"Avalonia.ReactiveUI\" Version=\"11.0.10\" />
-            <PackageReference Include=\"Avalonia.Fonts.Inter\" Version=\"11.0.10\" />
+            <PackageReference Include="Avalonia" Version="11.0.10" />
+            <PackageReference Include="Avalonia.Android" Version="11.0.10" />
+            <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.0.10" />
+            <PackageReference Include="Avalonia.Desktop" Version="11.0.10" />
+            <PackageReference Include="Avalonia.ReactiveUI" Version="11.0.10" />
+            <PackageReference Include="Avalonia.Fonts.Inter" Version="11.0.10" />
           </ItemGroup>
+        </Project>
+        EOF
 
-          <ItemGroup Condition=\"'\$(TargetFramework)' == 'net8.0-android'\">
-            <PackageReference Include=\"Avalonia.Android\" Version=\"11.0.10\" />
-          </ItemGroup>
-        </Project>''')
-        "
-
-    - name: Compiler le fichier APK
+    - name: Compiler l'APK
       run: |
         CSPROJ_FILE=$(find . -name "*.csproj" -not -path "*/obj/*" -not -path "*/bin/*" | head -n 1)
-        dotnet publish "$CSPROJ_FILE" -f net8.0-android -c Release -p:AndroidPackageFormat=apk
+        dotnet publish "$CSPROJ_FILE" -c Release -p:AndroidPackageFormat=apk
 
     - name: Sauvegarder l'APK généré
       uses: actions/upload-artifact@v4
