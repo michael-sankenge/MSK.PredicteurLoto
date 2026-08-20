@@ -1,13 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net8.0;net8.0-android31.0</TargetFrameworks>
+    <TargetFrameworks>net8.0;net8.0-android</TargetFrameworks>
+    <OutputType>Exe</OutputType>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <SupportedOSPlatformVersion>21.0</SupportedOSPlatformVersion>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0'">
-    <OutputType>WinExe</OutputType>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,7 +15,7 @@
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.0.10" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0-android31.0'">
+  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0-android'">
     <PackageReference Include="Avalonia.Android" Version="11.0.10" />
   </ItemGroup>
 </Project>
