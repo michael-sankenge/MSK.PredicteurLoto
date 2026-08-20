@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "dgSpecHash": "D9YiUVgxexdagAKIZSZogF1HeJXvNr7XXTgZAsXuaqUz5QP7cDE4uKMSa01ld/y7w7xsDhfdCOpDcAdsipgdkA==",
+  "success": false,
+  "projectFilePath": "C:\\Users\\Michael K. SANKENGE\\source\\repos\\MSK.PredicteurLoto\\MSK.PredicteurLoto\\MSK.PredicteurLoto.csproj",
+  "expectedPackageFiles": [],
+  "logs": [
+    {
+      "code": "NU1012",
+      "level": "Error",
+      "message": "La version de la plateforme n'est pas présente pour un ou plusieurs frameworks cibles, même s'ils ont spécifié une plateforme : net8.0-android"
+    }
+  ]
+}

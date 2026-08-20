@@ -1,0 +1,159 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="700"
+        x:Class="MSK.PredicteurLoto.Views.MainWindow"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="MSK - Prédicteur de Loto 5/90 (Premier Bet RDC)"
+        Background="#0F172A"
+        Width="1150" Height="700"
+        WindowStartupLocation="CenterScreen">
+
+  <Grid ColumnDefinitions="340, *" Margin="15">
+
+    <!-- PANNEAU DE GAUCHE -->
+    <ScrollViewer Grid.Column="0" Margin="0,0,15,0">
+      <StackPanel Spacing="15">
+
+        <!-- 1. Importation Facebook -->
+        <Border Background="#1E293B" CornerRadius="8" Padding="12" BorderBrush="#334155" BorderThickness="1">
+          <StackPanel Spacing="10">
+            <TextBlock Text="🚀 Importation Facebook" FontWeight="Bold" Foreground="White" FontSize="15"/>
+            <TextBox Name="TxtFacebookInput"
+                     AcceptsReturn="True"
+                     Height="130"
+                     Watermark="Collez le texte copié depuis Facebook ici..."
+                     TextWrapping="Wrap"
+                     Background="#0F172A" Foreground="White"
+                     CornerRadius="4"/>
+            <Button Content="Importer tout le Bloc Facebook"
+                    Click="OnImportClick"
+                    Background="#2563EB" Foreground="White"
+                    FontWeight="SemiBold"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Center"
+                    Padding="10" CornerRadius="4"/>
+          </StackPanel>
+        </Border>
+
+        <!-- 2. Saisie Manuelle -->
+        <Border Background="#1E293B" CornerRadius="8" Padding="12" BorderBrush="#334155" BorderThickness="1">
+          <StackPanel Spacing="10">
+            <TextBlock Text="⚡ Saisie Manuelle Directe" FontWeight="Bold" Foreground="White" FontSize="15"/>
+            <TextBlock Text="Entrez 5 numéros séparés par des espaces :" Foreground="#94A3B8" FontSize="12"/>
+            <TextBox Name="TxtSaisieManuelle" Watermark="ex: 12 45 67 89 2" Background="#0F172A" Foreground="White"/>
+            <Button Content="Ajouter un tirage"
+                    Click="OnAjouterSaisieManuelleClick"
+                    Background="#334155" Foreground="White"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Center"
+                    Padding="8" CornerRadius="4"/>
+          </StackPanel>
+        </Border>
+
+        <!-- 3. Sélection Mode & Génération -->
+        <Border Background="#1E293B" CornerRadius="8" Padding="12" BorderBrush="#334155" BorderThickness="1">
+          <StackPanel Spacing="12">
+            <TextBlock Text="🎯 Pronostics" FontWeight="Bold" Foreground="White" FontSize="15"/>
+
+            <ComboBox Name="CboModePronostic" SelectedIndex="0" HorizontalAlignment="Stretch" Background="#0F172A" Foreground="White">
+              <ComboBoxItem Content="Mode Turbo (Numéros Chauds)"/>
+              <ComboBoxItem Content="Mode Équilibré (Chauds + Froids)"/>
+              <ComboBoxItem Content="Système Réducteur (Garantie 3/5)"/>
+            </ComboBox>
+
+            <Button Content="Générer le Pronostic"
+                    Click="OnGenererPronosticClick"
+                    Background="#059669" Foreground="White"
+                    FontWeight="Bold" FontSize="16"
+                    Height="45"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Center"
+                    VerticalContentAlignment="Center"
+                    CornerRadius="6"/>
+          </StackPanel>
+        </Border>
+
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- PANNEAU DE DROITE -->
+    <Grid Grid.Column="1" RowDefinitions="*, Auto, Auto">
+
+      <!-- Grille des Tirages -->
+      <Border Grid.Row="0" Background="#1E293B" CornerRadius="8" Padding="10" BorderBrush="#334155" BorderThickness="1">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Top" Text="📊 Grille d'Affichage (Historique &amp; Pronostics)" FontWeight="Bold" Foreground="White" FontSize="16" Margin="0,0,0,10"/>
+
+          <!-- Propriété Items pour Avalonia 0.10 -->
+          <DataGrid Name="GridTirages"
+                    Items="{Binding ListeTirages}"
+                    AutoGenerateColumns="False"
+                    IsReadOnly="True"
+                    GridLinesVisibility="All"
+                    Background="#0F172A" Foreground="White"
+                    RowBackground="#1E293B"
+                    BorderThickness="1" BorderBrush="#334155">
+            <DataGrid.Columns>
+  <DataGridTextColumn Header="Heure / Libellé" Binding="{Binding Heure}" Width="1.5*"/>
+  <DataGridTextColumn Header="Boule 1" Binding="{Binding Boule1}" Width="*"/>
+  <DataGridTextColumn Header="Boule 2" Binding="{Binding Boule2}" Width="*"/>
+  <DataGridTextColumn Header="Boule 3" Binding="{Binding Boule3}" Width="*"/>
+  <DataGridTextColumn Header="Boule 4" Binding="{Binding Boule4}" Width="*"/>
+  <DataGridTextColumn Header="Boule 5" Binding="{Binding Boule5}" Width="*"/>
+  <!-- Colonnes Extra stylisées -->
+  <DataGridTextColumn Header="Extra 1" Binding="{Binding Extra1}" Width="*" Foreground="#FFD700" FontWeight="Bold"/>
+  <DataGridTextColumn Header="Extra 2" Binding="{Binding Extra2}" Width="*" Foreground="#FFD700" FontWeight="Bold"/>
+</DataGrid.Columns>
+          </DataGrid>
+        </DockPanel>
+      </Border>
+
+      <!-- Barre de Statistiques & Actions -->
+      <StackPanel Grid.Row="1" Margin="0,15,0,0" Spacing="10">
+        <Border Background="#1E293B" CornerRadius="6" Padding="10" BorderBrush="#334155" BorderThickness="1">
+          <TextBlock Name="TxtStats"
+                     Text="🔥 Top Chauds : En attente...  |  🧊 Top Froids : En attente..."
+                     Foreground="#F59E0B"
+                     FontWeight="SemiBold"
+                     HorizontalAlignment="Center"/>
+        </Border>
+
+        <Grid ColumnDefinitions="*, Auto, Auto, Auto">
+          <TextBlock Grid.Column="0" 
+                     Text="🛡️ Filtres intelligents actifs : Pairs/Impairs, Somme (120-330) &amp; Suites" 
+                     Foreground="#10B981" 
+                     VerticalAlignment="Center" 
+                     FontStyle="Italic" 
+                     FontSize="12"/>
+
+          <Button Grid.Column="1" 
+                  Content="Purger l'historique" 
+                  Click="OnPurgerClick"
+                  Background="#DC2626" Foreground="White" 
+                  Margin="0,0,10,0" CornerRadius="4"/>
+
+          <Button Grid.Column="2" 
+                  Content="Exporter (.txt)" 
+                  Click="OnExporterClick"
+                  Background="#475569" Foreground="White" 
+                  Margin="0,0,10,0" CornerRadius="4"/>
+
+          <Button Grid.Column="3" 
+                  Content="📊 Table 1-90" 
+                  Click="OnAfficherAnalyseClick"
+                  Background="#8B5CF6" Foreground="White" 
+                  FontWeight="Bold" CornerRadius="4"/>
+        </Grid>
+      </StackPanel>
+
+      <!-- Pied de page -->
+      <TextBlock Grid.Row="2"
+                 Text="© 2026 MSK-PredictorLoto. Tous droits réservés par Michael Sankenge Kisi"
+                 Foreground="#64748B" FontSize="11"
+                 Margin="0,15,0,0" HorizontalAlignment="Center"/>
+    </Grid>
+
+  </Grid>
+</Window>

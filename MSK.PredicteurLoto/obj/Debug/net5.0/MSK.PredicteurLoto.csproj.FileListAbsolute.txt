@@ -1,0 +1,5 @@
+C:\Users\Michael K. SANKENGE\source\repos\MSK.PredicteurLoto\MSK.PredicteurLoto\obj\Debug\net5.0\MSK.PredicteurLoto.csproj.AssemblyReference.cache
+C:\Users\Michael K. SANKENGE\source\repos\MSK.PredicteurLoto\MSK.PredicteurLoto\obj\Debug\net5.0\MSK.PredicteurLoto.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Michael K. SANKENGE\source\repos\MSK.PredicteurLoto\MSK.PredicteurLoto\obj\Debug\net5.0\MSK.PredicteurLoto.AssemblyInfoInputs.cache
+C:\Users\Michael K. SANKENGE\source\repos\MSK.PredicteurLoto\MSK.PredicteurLoto\obj\Debug\net5.0\MSK.PredicteurLoto.AssemblyInfo.cs
+C:\Users\Michael K. SANKENGE\source\repos\MSK.PredicteurLoto\MSK.PredicteurLoto\obj\Debug\net5.0\MSK.PredicteurLoto.csproj.CoreCompileInputs.cache
