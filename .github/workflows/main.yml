@@ -27,7 +27,7 @@ jobs:
     - name: Installer la charge Android
       run: dotnet workload install android
 
-    - name: Configurer le projet Android
+    - name: Générer la configuration projet
       run: |
         CSPROJ_FILE=$(find . -name "*.csproj" -not -path "*/obj/*" -not -path "*/bin/*" | head -n 1)
         cat << 'EOF' > "$CSPROJ_FILE"
@@ -35,6 +35,7 @@ jobs:
           <PropertyGroup>
             <TargetFramework>net8.0-android</TargetFramework>
             <SupportedOSPlatformVersion>21.0</SupportedOSPlatformVersion>
+            <TargetPlatformVersion>34.0</TargetPlatformVersion>
             <OutputType>Exe</OutputType>
             <Nullable>enable</Nullable>
             <ImplicitUsings>enable</ImplicitUsings>
@@ -42,12 +43,12 @@ jobs:
           </PropertyGroup>
 
           <ItemGroup>
-            <PackageReference Include="Avalonia" Version="11.0.10" />
-            <PackageReference Include="Avalonia.Android" Version="11.0.10" />
-            <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.0.10" />
-            <PackageReference Include="Avalonia.Desktop" Version="11.0.10" />
-            <PackageReference Include="Avalonia.ReactiveUI" Version="11.0.10" />
-            <PackageReference Include="Avalonia.Fonts.Inter" Version="11.0.10" />
+            <PackageReference Include="Avalonia" Version="11.1.3" />
+            <PackageReference Include="Avalonia.Android" Version="11.1.3" />
+            <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.1.3" />
+            <PackageReference Include="Avalonia.Desktop" Version="11.1.3" />
+            <PackageReference Include="Avalonia.ReactiveUI" Version="11.1.3" />
+            <PackageReference Include="Avalonia.Fonts.Inter" Version="11.1.3" />
           </ItemGroup>
         </Project>
         EOF
