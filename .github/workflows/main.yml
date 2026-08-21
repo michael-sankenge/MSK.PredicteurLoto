@@ -39,7 +39,7 @@ jobs:
         cat << 'EOF' > fix_script.py
         import glob, os, re, shutil
 
-        # Recherche de l'icône icon.png
+        # 1. Détection de l'icône personnalisée
         icon_path = None
         for f in glob.glob('**/icon.png', recursive=True):
             if 'bin' not in f and 'obj' not in f:
@@ -77,15 +77,87 @@ jobs:
         }}
         '''
 
-        # 1. Correction de App.axaml.cs
+        # 2. Adaptation sécurisée d'App.axaml.cs pour Android
+        app_cs_code = '''using Avalonia;
+        using Avalonia.Controls;
+        using Avalonia.Controls.ApplicationLifetimes;
+        using Avalonia.Markup.Xaml;
+        using System;
+        using System.Linq;
+
+        namespace MSK.PredicteurLoto;
+
+        public partial class App : Application
+        {
+            public override void Initialize()
+            {
+                AvaloniaXamlLoader.Load(this);
+            }
+
+            public override void OnFrameworkInitializationCompleted()
+            {
+                try
+                {
+                    if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+                    {
+                        var windowType = AppDomain.CurrentDomain.GetAssemblies()
+                            .SelectMany(a => a.GetTypes())
+                            .FirstOrDefault(t => t.Name == "MainWindow" && typeof(Window).IsAssignableFrom(t));
+
+                        if (windowType != null)
+                        {
+                            desktop.MainWindow = (Window)Activator.CreateInstance(windowType)!;
+                        }
+                    }
+                    else if (ApplicationLifetime is ISingleViewApplicationLifetime singleView)
+                    {
+                        var viewType = AppDomain.CurrentDomain.GetAssemblies()
+                            .SelectMany(a => a.GetTypes())
+                            .FirstOrDefault(t => t.Name == "MainView" && typeof(Control).IsAssignableFrom(t));
+
+                        if (viewType != null)
+                        {
+                            singleView.MainView = (Control)Activator.CreateInstance(viewType)!;
+                        }
+                        else
+                        {
+                            var windowType = AppDomain.CurrentDomain.GetAssemblies()
+                                .SelectMany(a => a.GetTypes())
+                                .FirstOrDefault(t => t.Name == "MainWindow" && typeof(Window).IsAssignableFrom(t));
+
+                            if (windowType != null)
+                            {
+                                var window = (Window)Activator.CreateInstance(windowType)!;
+                                if (window.Content is Control contentControl)
+                                {
+                                    window.Content = null;
+                                    singleView.MainView = contentControl;
+                                }
+                                else
+                                {
+                                    singleView.MainView = window;
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"App Init Exception: {ex}");
+                }
+
+                base.OnFrameworkInitializationCompleted();
+            }
+        }
+        '''
+
+        # Application d'App.axaml.cs
         for f in glob.glob('**/App.axaml.cs', recursive=True):
             if 'bin' in f or 'obj' in f: continue
-            with open(f, 'r', encoding='utf-8') as file: c = file.read()
-            if 'using Application = Avalonia.Application;' not in c:
-                with open(f, 'w', encoding='utf-8') as file:
-                    file.write('using Application = Avalonia.Application;\n' + c)
+            with open(f, 'w', encoding='utf-8') as file:
+                file.write(app_cs_code)
 
-        # 2. Correction de ViewLocator.cs
+        # 3. Correction ViewLocator.cs
         for f in glob.glob('**/ViewLocator.cs', recursive=True):
             if 'bin' in f or 'obj' in f: continue
             with open(f, 'r', encoding='utf-8') as file: c = file.read()
@@ -93,9 +165,9 @@ jobs:
             c = c.replace('Build(object data)', 'Build(object? data)').replace('Match(object data)', 'Match(object? data)')
             with open(f, 'w', encoding='utf-8') as file: file.write(c)
 
-        # 3. Corrections AXAML et C#
+        # 4. Corrections AXAML
         for f in glob.glob('**/*.axaml', recursive=True) + glob.glob('**/*.cs', recursive=True):
-            if 'bin' in f or 'obj' in f: continue
+            if 'bin' in f or 'obj' in f or f.endswith('App.axaml.cs'): continue
             with open(f, 'r', encoding='utf-8') as file: c = file.read()
             modified = False
             if '.Items' in c:
@@ -110,12 +182,11 @@ jobs:
             if modified:
                 with open(f, 'w', encoding='utf-8') as file: file.write(c)
 
-        # 4. Configuration du projet, AndroidManifest et Icône
+        # 5. Configuration du projet
         for file in glob.glob('**/*.csproj', recursive=True):
             if 'bin' in file or 'obj' in file: continue
             proj_dir = os.path.dirname(file)
             
-            # Traitement de l'icône si présente
             if icon_path:
                 drawable_dir = os.path.join(proj_dir, 'Resources', 'drawable')
                 os.makedirs(drawable_dir, exist_ok=True)
