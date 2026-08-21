@@ -37,16 +37,26 @@ jobs:
     - name: Préparer le projet et appliquer tous les correctifs
       run: |
         cat << 'EOF' > fix_script.py
-        import glob, os, re
+        import glob, os, re, shutil
 
-        manifest = '''<?xml version="1.0" encoding="utf-8"?>
+        # Recherche de l'icône icon.png
+        icon_path = None
+        for f in glob.glob('**/icon.png', recursive=True):
+            if 'bin' not in f and 'obj' not in f:
+                icon_path = f
+                break
+
+        icon_manifest_attr = ' android:icon="@drawable/icon" android:roundIcon="@drawable/icon"' if icon_path else ''
+        icon_activity_attr = '\n    Icon = "@drawable/icon",' if icon_path else ''
+
+        manifest = f'''<?xml version="1.0" encoding="utf-8"?>
         <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.msk.predicteurloto">
             <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="34" />
-            <application android:allowBackup="true" android:label="MSK PredicteurLoto" android:supportsRtl="true">
+            <application android:allowBackup="true" android:label="MSK PredicteurLoto" android:supportsRtl="true"{icon_manifest_attr}>
             </application>
         </manifest>'''
 
-        main_activity_code = '''using Android.App;
+        main_activity_code = f'''using Android.App;
         using Android.Content.PM;
         using Avalonia;
         using Avalonia.Android;
@@ -54,18 +64,17 @@ jobs:
         namespace MSK.PredicteurLoto;
 
         [Activity(
-            Label = "MSK PredicteurLoto",
+            Label = "MSK PredicteurLoto",{icon_activity_attr}
             Theme = "@android:style/Theme.DeviceDefault.NoActionBar",
             MainLauncher = true,
             ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.ScreenSize | ConfigChanges.UiMode)]
         public class MainActivity : AvaloniaMainActivity<App>
-        {
+        {{
             protected override AppBuilder CustomizeAppBuilder(AppBuilder builder)
-            {
-                return base.CustomizeAppBuilder(builder)
-                    .WithInterFont();
-            }
-        }
+            {{
+                return base.CustomizeAppBuilder(builder);
+            }}
+        }}
         '''
 
         # 1. Correction de App.axaml.cs
@@ -101,11 +110,19 @@ jobs:
             if modified:
                 with open(f, 'w', encoding='utf-8') as file: file.write(c)
 
-        # 4. Configuration du projet, AndroidManifest et MainActivity
+        # 4. Configuration du projet, AndroidManifest et Icône
         for file in glob.glob('**/*.csproj', recursive=True):
             if 'bin' in file or 'obj' in file: continue
             proj_dir = os.path.dirname(file)
             
+            # Traitement de l'icône si présente
+            if icon_path:
+                drawable_dir = os.path.join(proj_dir, 'Resources', 'drawable')
+                os.makedirs(drawable_dir, exist_ok=True)
+                target_icon = os.path.join(drawable_dir, 'icon.png')
+                if os.path.abspath(icon_path) != os.path.abspath(target_icon):
+                    shutil.copy(icon_path, target_icon)
+
             with open(os.path.join(proj_dir, 'AndroidManifest.xml'), 'w', encoding='utf-8') as f:
                 f.write(manifest)
             
