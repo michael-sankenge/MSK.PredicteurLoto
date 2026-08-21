@@ -46,6 +46,28 @@ jobs:
             </application>
         </manifest>'''
 
+        main_activity_code = '''using Android.App;
+        using Android.Content.PM;
+        using Avalonia;
+        using Avalonia.Android;
+
+        namespace MSK.PredicteurLoto;
+
+        [Activity(
+            Label = "MSK PredicteurLoto",
+            Theme = "@style/MyTheme.NoActionBar",
+            MainLauncher = true,
+            ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.ScreenSize | ConfigChanges.UiMode)]
+        public class MainActivity : AvaloniaMainActivity<App>
+        {
+            protected override AppBuilder CustomizeAppBuilder(AppBuilder builder)
+            {
+                return base.CustomizeAppBuilder(builder)
+                    .WithInterFont();
+            }
+        }
+        '''
+
         # 1. Correction de App.axaml.cs
         for f in glob.glob('**/App.axaml.cs', recursive=True):
             if 'bin' in f or 'obj' in f: continue
@@ -62,7 +84,7 @@ jobs:
             c = c.replace('Build(object data)', 'Build(object? data)').replace('Match(object data)', 'Match(object? data)')
             with open(f, 'w', encoding='utf-8') as file: file.write(c)
 
-        # 3. Corrections AXAML et C# (DataGrid.ItemsSource et FluentTheme Mode)
+        # 3. Corrections AXAML et C#
         for f in glob.glob('**/*.axaml', recursive=True) + glob.glob('**/*.cs', recursive=True):
             if 'bin' in f or 'obj' in f: continue
             with open(f, 'r', encoding='utf-8') as file: c = file.read()
@@ -79,7 +101,7 @@ jobs:
             if modified:
                 with open(f, 'w', encoding='utf-8') as file: file.write(c)
 
-        # 4. Génération Manifest et mise à jour du .csproj sans Trimming
+        # 4. Configuration du projet et AndroidManifest
         for file in glob.glob('**/*.csproj', recursive=True):
             if 'bin' in file or 'obj' in file: continue
             proj_dir = os.path.dirname(file)
@@ -91,6 +113,10 @@ jobs:
             os.makedirs(props_dir, exist_ok=True)
             with open(os.path.join(props_dir, 'AndroidManifest.xml'), 'w', encoding='utf-8') as f:
                 f.write(manifest)
+
+            # Créer / remplacer MainActivity.cs avec MainLauncher = true
+            with open(os.path.join(proj_dir, 'MainActivity.cs'), 'w', encoding='utf-8') as f:
+                f.write(main_activity_code)
 
             content = '''<Project Sdk="Microsoft.NET.Sdk">
           <PropertyGroup>
