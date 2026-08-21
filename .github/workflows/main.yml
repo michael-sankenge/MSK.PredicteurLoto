@@ -55,7 +55,7 @@ jobs:
 
         [Activity(
             Label = "MSK PredicteurLoto",
-            Theme = "@style/MyTheme.NoActionBar",
+            Theme = "@android:style/Theme.DeviceDefault.NoActionBar",
             MainLauncher = true,
             ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.ScreenSize | ConfigChanges.UiMode)]
         public class MainActivity : AvaloniaMainActivity<App>
@@ -101,7 +101,7 @@ jobs:
             if modified:
                 with open(f, 'w', encoding='utf-8') as file: file.write(c)
 
-        # 4. Configuration du projet et AndroidManifest
+        # 4. Configuration du projet, AndroidManifest et MainActivity
         for file in glob.glob('**/*.csproj', recursive=True):
             if 'bin' in file or 'obj' in file: continue
             proj_dir = os.path.dirname(file)
@@ -114,7 +114,6 @@ jobs:
             with open(os.path.join(props_dir, 'AndroidManifest.xml'), 'w', encoding='utf-8') as f:
                 f.write(manifest)
 
-            # Créer / remplacer MainActivity.cs avec MainLauncher = true
             with open(os.path.join(proj_dir, 'MainActivity.cs'), 'w', encoding='utf-8') as f:
                 f.write(main_activity_code)
 
