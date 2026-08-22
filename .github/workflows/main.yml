@@ -80,27 +80,34 @@ jobs:
         }}
         '''
 
-        # 2. Correction App.axaml pour inclure les thèmes Fluent et DataGrid
+        # 2. Correctif unifié pour tous les fichiers .axaml
+        for f in glob.glob('**/*.axaml', recursive=True):
+            if 'bin' in f or 'obj' in f: continue
+            with open(f, 'r', encoding='utf-8') as file: c = file.read()
+
+            # Correction des propriétés DataGrid et thèmes en Avalonia 11
+            c = re.sub(r'\bItems\s*=\s*"', 'ItemsSource="', c)
+            c = re.sub(r'\bItems\s*=\s*\'', "ItemsSource='", c)
+            c = re.sub(r'DataGrid\.Items\b', 'DataGrid.ItemsSource', c)
+            c = re.sub(r'FluentTheme\s+Mode="[^"]*"', 'FluentTheme', c)
+
+            # Conversion Window -> UserControl pour Android
+            if '<Window' in c and 'App.axaml' not in f:
+                c = re.sub(r'<Window\b', '<UserControl', c)
+                c = re.sub(r'</Window>', '</UserControl>', c)
+                for attr in ['Title', 'WindowStartupLocation', 'CanResize', 'ExtendClientAreaToDecorationsHint', 
+                               'ExtendClientAreaChromeHints', 'ExtendClientAreaTitleBarHeightHint', 'SystemDecorations', 'WindowState', 'Icon']:
+                    c = re.sub(rf'\s+{attr}="[^"]*"', '', c)
+
+            with open(f, 'w', encoding='utf-8') as file: file.write(c)
+
+        # 3. Correction App.axaml pour inclure le style DataGrid
         for f in glob.glob('**/App.axaml', recursive=True):
             if 'bin' in f or 'obj' in f: continue
             with open(f, 'r', encoding='utf-8') as file: c = file.read()
-            c = re.sub(r'Mode="[^"]*"', '', c)
             if 'avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml' not in c:
                 c = c.replace('</Application.Styles>', '    <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"/>\n</Application.Styles>')
             with open(f, 'w', encoding='utf-8') as file: file.write(c)
-
-        # 3. Conversion Window -> UserControl dans les fichiers AXAML
-        for f in glob.glob('**/*.axaml', recursive=True):
-            if 'bin' in f or 'obj' in f or 'App.axaml' in f: continue
-            with open(f, 'r', encoding='utf-8') as file: c = file.read()
-            if '<Window' in c:
-                c = re.sub(r'<Window\b', '<UserControl', c)
-                c = re.sub(r'</Window>', '</UserControl>', c)
-                window_attrs = ['Title', 'WindowStartupLocation', 'CanResize', 'ExtendClientAreaToDecorationsHint', 
-                               'ExtendClientAreaChromeHints', 'ExtendClientAreaTitleBarHeightHint', 'SystemDecorations', 'WindowState', 'Icon']
-                for attr in window_attrs:
-                    c = re.sub(rf'\s+{attr}="[^"]*"', '', c)
-                with open(f, 'w', encoding='utf-8') as file: file.write(c)
 
         # 4. Corrections du code C# (.cs)
         for f in glob.glob('**/*.cs', recursive=True):
@@ -126,7 +133,7 @@ jobs:
             if modified:
                 with open(f, 'w', encoding='utf-8') as file: file.write(c)
 
-        # 5. App.axaml.cs sécurisé
+        # 5. App.axaml.cs sécurisé avec écran de secours
         app_cs_code = '''using Avalonia;
         using Avalonia.Controls;
         using Avalonia.Controls.ApplicationLifetimes;
