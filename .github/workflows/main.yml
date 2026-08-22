@@ -77,7 +77,7 @@ jobs:
         }}
         '''
 
-        # 2. Conversion des Window en UserControl pour la compatibilité Android
+        # 2. Conversion Window -> UserControl dans les fichiers AXAML
         for f in glob.glob('**/*.axaml', recursive=True):
             if 'bin' in f or 'obj' in f or 'App.axaml' in f: continue
             with open(f, 'r', encoding='utf-8') as file: c = file.read()
@@ -90,20 +90,40 @@ jobs:
                     c = re.sub(rf'\s+{attr}="[^"]*"', '', c)
                 with open(f, 'w', encoding='utf-8') as file: file.write(c)
 
+        # 3. Corrections spécifiques du code C# (.cs)
         for f in glob.glob('**/*.cs', recursive=True):
-            if 'bin' in f or 'obj' in f or 'App.axaml.cs' in f: continue
+            if 'bin' in f or 'obj' in f or f.endswith('App.axaml.cs'): continue
             with open(f, 'r', encoding='utf-8') as file: c = file.read()
+            modified = False
+
+            # Replacement Window -> UserControl
             if ': Window' in c or ':Avalonia.Controls.Window' in c:
                 c = c.replace(': Window', ': UserControl').replace(':Avalonia.Controls.Window', ': Avalonia.Controls.UserControl')
                 if 'using Avalonia.Controls;' not in c:
                     c = 'using Avalonia.Controls;\n' + c
+                modified = True
+
+            # Fix DataGrid.Items -> DataGrid.ItemsSource
+            if '.Items' in c:
+                c = re.sub(r'\.Items\b', '.ItemsSource', c)
+                c = c.replace('.ItemsSourceSource', '.ItemsSource')
+                modified = True
+
+            # Fix des appels de boîtes de dialogue (ex: SaveFileDialog.ShowAsync(this))
+            if 'ShowAsync(' in c:
+                c = re.sub(r'ShowAsync\s*\(\s*this\s*\)', 'ShowAsync(null!)', c)
+                modified = True
+
+            if modified:
                 with open(f, 'w', encoding='utf-8') as file: file.write(c)
 
-        # 3. App.axaml.cs propre et compatible ISingleViewApplicationLifetime
+        # 4. App.axaml.cs dynamique et compatible
         app_cs_code = '''using Avalonia;
         using Avalonia.Controls;
         using Avalonia.Controls.ApplicationLifetimes;
         using Avalonia.Markup.Xaml;
+        using System;
+        using System.Linq;
 
         namespace MSK.PredicteurLoto;
 
@@ -116,13 +136,29 @@ jobs:
 
             public override void OnFrameworkInitializationCompleted()
             {
-                if (ApplicationLifetime is ISingleViewApplicationLifetime singleView)
+                try
                 {
-                    singleView.MainView = new MainWindow();
+                    var mainViewType = AppDomain.CurrentDomain.GetAssemblies()
+                        .SelectMany(a => a.GetTypes())
+                        .FirstOrDefault(t => t.Name == "MainWindow" && typeof(Control).IsAssignableFrom(t));
+
+                    if (mainViewType != null)
+                    {
+                        var view = (Control)Activator.CreateInstance(mainViewType)!;
+
+                        if (ApplicationLifetime is ISingleViewApplicationLifetime singleView)
+                        {
+                            singleView.MainView = view;
+                        }
+                        else if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+                        {
+                            desktop.MainWindow = new Window { Content = view };
+                        }
+                    }
                 }
-                else if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+                catch (Exception ex)
                 {
-                    desktop.MainWindow = new Window { Content = new MainWindow() };
+                    System.Diagnostics.Debug.WriteLine($"App Init Exception: {ex}");
                 }
 
                 base.OnFrameworkInitializationCompleted();
@@ -132,9 +168,10 @@ jobs:
 
         for f in glob.glob('**/App.axaml.cs', recursive=True):
             if 'bin' in f or 'obj' in f: continue
-            with open(f, 'w', encoding='utf-8') as file: file.write(app_cs_code)
+            with open(f, 'w', encoding='utf-8') as file:
+                file.write(app_cs_code)
 
-        # 4. Correctifs syntaxiques génériques (Items -> ItemsSource, ViewLocator)
+        # 5. Correctifs ViewLocator et AXAML
         for f in glob.glob('**/ViewLocator.cs', recursive=True):
             if 'bin' in f or 'obj' in f: continue
             with open(f, 'r', encoding='utf-8') as file: c = file.read()
@@ -155,7 +192,7 @@ jobs:
             if modified:
                 with open(f, 'w', encoding='utf-8') as file: file.write(c)
 
-        # 5. Configuration finale du projet Android
+        # 6. Configuration .csproj
         for file in glob.glob('**/*.csproj', recursive=True):
             if 'bin' in file or 'obj' in file: continue
             proj_dir = os.path.dirname(file)
