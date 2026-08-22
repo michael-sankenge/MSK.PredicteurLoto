@@ -80,7 +80,7 @@ jobs:
         }}
         '''
 
-        # 2. Correction App.axaml pour s'assurer que les thèmes Fluent et DataGrid sont inclus
+        # 2. Correction App.axaml pour inclure les thèmes Fluent et DataGrid
         for f in glob.glob('**/App.axaml', recursive=True):
             if 'bin' in f or 'obj' in f: continue
             with open(f, 'r', encoding='utf-8') as file: c = file.read()
@@ -126,7 +126,7 @@ jobs:
             if modified:
                 with open(f, 'w', encoding='utf-8') as file: file.write(c)
 
-        # 5. App.axaml.cs avec capture d'écran d'erreur intégrée
+        # 5. App.axaml.cs sécurisé
         app_cs_code = '''using Avalonia;
         using Avalonia.Controls;
         using Avalonia.Controls.ApplicationLifetimes;
@@ -177,7 +177,7 @@ jobs:
                     {
                         Content = new TextBlock
                         {
-                            Text = "Erreur au démarrage :\n\n" + ex.ToString(),
+                            Text = "Erreur au démarrage : " + Environment.NewLine + ex.ToString(),
                             Foreground = Avalonia.Media.Brushes.Red,
                             Margin = new Thickness(20),
                             TextWrapping = Avalonia.Media.TextWrapping.Wrap
