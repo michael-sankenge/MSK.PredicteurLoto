@@ -60,6 +60,7 @@ jobs:
         using Android.Content.PM;
         using Avalonia;
         using Avalonia.Android;
+        using Avalonia.ReactiveUI;
 
         namespace MSK.PredicteurLoto;
 
@@ -72,12 +73,23 @@ jobs:
         {{
             protected override AppBuilder CustomizeAppBuilder(AppBuilder builder)
             {{
-                return base.CustomizeAppBuilder(builder).WithInterFont();
+                return base.CustomizeAppBuilder(builder)
+                    .WithInterFont()
+                    .UseReactiveUI();
             }}
         }}
         '''
 
-        # 2. Conversion Window -> UserControl dans les fichiers AXAML
+        # 2. Correction App.axaml pour s'assurer que les thèmes Fluent et DataGrid sont inclus
+        for f in glob.glob('**/App.axaml', recursive=True):
+            if 'bin' in f or 'obj' in f: continue
+            with open(f, 'r', encoding='utf-8') as file: c = file.read()
+            c = re.sub(r'Mode="[^"]*"', '', c)
+            if 'avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml' not in c:
+                c = c.replace('</Application.Styles>', '    <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"/>\n</Application.Styles>')
+            with open(f, 'w', encoding='utf-8') as file: file.write(c)
+
+        # 3. Conversion Window -> UserControl dans les fichiers AXAML
         for f in glob.glob('**/*.axaml', recursive=True):
             if 'bin' in f or 'obj' in f or 'App.axaml' in f: continue
             with open(f, 'r', encoding='utf-8') as file: c = file.read()
@@ -90,26 +102,23 @@ jobs:
                     c = re.sub(rf'\s+{attr}="[^"]*"', '', c)
                 with open(f, 'w', encoding='utf-8') as file: file.write(c)
 
-        # 3. Corrections spécifiques du code C# (.cs)
+        # 4. Corrections du code C# (.cs)
         for f in glob.glob('**/*.cs', recursive=True):
             if 'bin' in f or 'obj' in f or f.endswith('App.axaml.cs'): continue
             with open(f, 'r', encoding='utf-8') as file: c = file.read()
             modified = False
 
-            # Replacement Window -> UserControl
             if ': Window' in c or ':Avalonia.Controls.Window' in c:
                 c = c.replace(': Window', ': UserControl').replace(':Avalonia.Controls.Window', ': Avalonia.Controls.UserControl')
                 if 'using Avalonia.Controls;' not in c:
                     c = 'using Avalonia.Controls;\n' + c
                 modified = True
 
-            # Fix DataGrid.Items -> DataGrid.ItemsSource
             if '.Items' in c:
                 c = re.sub(r'\.Items\b', '.ItemsSource', c)
                 c = c.replace('.ItemsSourceSource', '.ItemsSource')
                 modified = True
 
-            # Fix des appels de boîtes de dialogue (ex: SaveFileDialog.ShowAsync(this))
             if 'ShowAsync(' in c:
                 c = re.sub(r'ShowAsync\s*\(\s*this\s*\)', 'ShowAsync(null!)', c)
                 modified = True
@@ -117,7 +126,7 @@ jobs:
             if modified:
                 with open(f, 'w', encoding='utf-8') as file: file.write(c)
 
-        # 4. App.axaml.cs dynamique et compatible
+        # 5. App.axaml.cs avec capture d'écran d'erreur intégrée
         app_cs_code = '''using Avalonia;
         using Avalonia.Controls;
         using Avalonia.Controls.ApplicationLifetimes;
@@ -140,25 +149,49 @@ jobs:
                 {
                     var mainViewType = AppDomain.CurrentDomain.GetAssemblies()
                         .SelectMany(a => a.GetTypes())
-                        .FirstOrDefault(t => t.Name == "MainWindow" && typeof(Control).IsAssignableFrom(t));
+                        .FirstOrDefault(t => (t.Name == "MainWindow" || t.Name == "MainView") && typeof(Control).IsAssignableFrom(t));
 
+                    Control? view = null;
                     if (mainViewType != null)
                     {
-                        var view = (Control)Activator.CreateInstance(mainViewType)!;
+                        view = (Control)Activator.CreateInstance(mainViewType)!;
+                    }
 
-                        if (ApplicationLifetime is ISingleViewApplicationLifetime singleView)
-                        {
-                            singleView.MainView = view;
-                        }
-                        else if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-                        {
-                            desktop.MainWindow = new Window { Content = view };
-                        }
+                    if (view == null)
+                    {
+                        view = new TextBlock { Text = "Vue principale introuvable.", Margin = new Thickness(20) };
+                    }
+
+                    if (ApplicationLifetime is ISingleViewApplicationLifetime singleView)
+                    {
+                        singleView.MainView = view;
+                    }
+                    else if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+                    {
+                        desktop.MainWindow = new Window { Content = view };
                     }
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"App Init Exception: {ex}");
+                    var errorView = new ScrollViewer
+                    {
+                        Content = new TextBlock
+                        {
+                            Text = "Erreur au démarrage :\n\n" + ex.ToString(),
+                            Foreground = Avalonia.Media.Brushes.Red,
+                            Margin = new Thickness(20),
+                            TextWrapping = Avalonia.Media.TextWrapping.Wrap
+                        }
+                    };
+
+                    if (ApplicationLifetime is ISingleViewApplicationLifetime singleView)
+                    {
+                        singleView.MainView = errorView;
+                    }
+                    else if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+                    {
+                        desktop.MainWindow = new Window { Content = errorView };
+                    }
                 }
 
                 base.OnFrameworkInitializationCompleted();
@@ -171,7 +204,7 @@ jobs:
             with open(f, 'w', encoding='utf-8') as file:
                 file.write(app_cs_code)
 
-        # 5. Correctifs ViewLocator et AXAML
+        # 6. ViewLocator
         for f in glob.glob('**/ViewLocator.cs', recursive=True):
             if 'bin' in f or 'obj' in f: continue
             with open(f, 'r', encoding='utf-8') as file: c = file.read()
@@ -179,20 +212,7 @@ jobs:
             c = c.replace('Build(object data)', 'Build(object? data)').replace('Match(object data)', 'Match(object? data)')
             with open(f, 'w', encoding='utf-8') as file: file.write(c)
 
-        for f in glob.glob('**/*.axaml', recursive=True):
-            if 'bin' in f or 'obj' in f: continue
-            with open(f, 'r', encoding='utf-8') as file: c = file.read()
-            modified = False
-            if 'Items="' in c:
-                c = c.replace('Items="', 'ItemsSource="')
-                modified = True
-            if 'FluentTheme' in c and 'Mode="' in c:
-                c = re.sub(r'(<FluentTheme[^>]*?)\s+Mode="[^"]*"', r'\1', c)
-                modified = True
-            if modified:
-                with open(f, 'w', encoding='utf-8') as file: file.write(c)
-
-        # 6. Configuration .csproj
+        # 7. Configuration .csproj
         for file in glob.glob('**/*.csproj', recursive=True):
             if 'bin' in file or 'obj' in file: continue
             proj_dir = os.path.dirname(file)
