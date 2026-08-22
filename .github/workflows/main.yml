@@ -39,7 +39,7 @@ jobs:
         cat << 'EOF' > fix_script.py
         import glob, os, re, shutil
 
-        # 1. Détection de l'icône personnalisée
+        # 1. Détection de l'icône
         icon_path = None
         for f in glob.glob('**/icon.png', recursive=True):
             if 'bin' not in f and 'obj' not in f:
@@ -72,18 +72,38 @@ jobs:
         {{
             protected override AppBuilder CustomizeAppBuilder(AppBuilder builder)
             {{
-                return base.CustomizeAppBuilder(builder);
+                return base.CustomizeAppBuilder(builder).WithInterFont();
             }}
         }}
         '''
 
-        # 2. App.axaml.cs corrigé sans ambiguïté sur Application
+        # 2. Conversion des Window en UserControl pour la compatibilité Android
+        for f in glob.glob('**/*.axaml', recursive=True):
+            if 'bin' in f or 'obj' in f or 'App.axaml' in f: continue
+            with open(f, 'r', encoding='utf-8') as file: c = file.read()
+            if '<Window' in c:
+                c = re.sub(r'<Window\b', '<UserControl', c)
+                c = re.sub(r'</Window>', '</UserControl>', c)
+                window_attrs = ['Title', 'WindowStartupLocation', 'CanResize', 'ExtendClientAreaToDecorationsHint', 
+                               'ExtendClientAreaChromeHints', 'ExtendClientAreaTitleBarHeightHint', 'SystemDecorations', 'WindowState', 'Icon']
+                for attr in window_attrs:
+                    c = re.sub(rf'\s+{attr}="[^"]*"', '', c)
+                with open(f, 'w', encoding='utf-8') as file: file.write(c)
+
+        for f in glob.glob('**/*.cs', recursive=True):
+            if 'bin' in f or 'obj' in f or 'App.axaml.cs' in f: continue
+            with open(f, 'r', encoding='utf-8') as file: c = file.read()
+            if ': Window' in c or ':Avalonia.Controls.Window' in c:
+                c = c.replace(': Window', ': UserControl').replace(':Avalonia.Controls.Window', ': Avalonia.Controls.UserControl')
+                if 'using Avalonia.Controls;' not in c:
+                    c = 'using Avalonia.Controls;\n' + c
+                with open(f, 'w', encoding='utf-8') as file: file.write(c)
+
+        # 3. App.axaml.cs propre et compatible ISingleViewApplicationLifetime
         app_cs_code = '''using Avalonia;
         using Avalonia.Controls;
         using Avalonia.Controls.ApplicationLifetimes;
         using Avalonia.Markup.Xaml;
-        using System;
-        using System.Linq;
 
         namespace MSK.PredicteurLoto;
 
@@ -96,54 +116,13 @@ jobs:
 
             public override void OnFrameworkInitializationCompleted()
             {
-                try
+                if (ApplicationLifetime is ISingleViewApplicationLifetime singleView)
                 {
-                    if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-                    {
-                        var windowType = AppDomain.CurrentDomain.GetAssemblies()
-                            .SelectMany(a => a.GetTypes())
-                            .FirstOrDefault(t => t.Name == "MainWindow" && typeof(Window).IsAssignableFrom(t));
-
-                        if (windowType != null)
-                        {
-                            desktop.MainWindow = (Window)Activator.CreateInstance(windowType)!;
-                        }
-                    }
-                    else if (ApplicationLifetime is ISingleViewApplicationLifetime singleView)
-                    {
-                        var viewType = AppDomain.CurrentDomain.GetAssemblies()
-                            .SelectMany(a => a.GetTypes())
-                            .FirstOrDefault(t => t.Name == "MainView" && typeof(Control).IsAssignableFrom(t));
-
-                        if (viewType != null)
-                        {
-                            singleView.MainView = (Control)Activator.CreateInstance(viewType)!;
-                        }
-                        else
-                        {
-                            var windowType = AppDomain.CurrentDomain.GetAssemblies()
-                                .SelectMany(a => a.GetTypes())
-                                .FirstOrDefault(t => t.Name == "MainWindow" && typeof(Window).IsAssignableFrom(t));
-
-                            if (windowType != null)
-                            {
-                                var window = (Window)Activator.CreateInstance(windowType)!;
-                                if (window.Content is Control contentControl)
-                                {
-                                    window.Content = null;
-                                    singleView.MainView = contentControl;
-                                }
-                                else
-                                {
-                                    singleView.MainView = window;
-                                }
-                            }
-                        }
-                    }
+                    singleView.MainView = new MainWindow();
                 }
-                catch (Exception ex)
+                else if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
                 {
-                    System.Diagnostics.Debug.WriteLine($"App Init Exception: {ex}");
+                    desktop.MainWindow = new Window { Content = new MainWindow() };
                 }
 
                 base.OnFrameworkInitializationCompleted();
@@ -153,10 +132,9 @@ jobs:
 
         for f in glob.glob('**/App.axaml.cs', recursive=True):
             if 'bin' in f or 'obj' in f: continue
-            with open(f, 'w', encoding='utf-8') as file:
-                file.write(app_cs_code)
+            with open(f, 'w', encoding='utf-8') as file: file.write(app_cs_code)
 
-        # 3. Correction ViewLocator.cs
+        # 4. Correctifs syntaxiques génériques (Items -> ItemsSource, ViewLocator)
         for f in glob.glob('**/ViewLocator.cs', recursive=True):
             if 'bin' in f or 'obj' in f: continue
             with open(f, 'r', encoding='utf-8') as file: c = file.read()
@@ -164,14 +142,10 @@ jobs:
             c = c.replace('Build(object data)', 'Build(object? data)').replace('Match(object data)', 'Match(object? data)')
             with open(f, 'w', encoding='utf-8') as file: file.write(c)
 
-        # 4. Corrections AXAML
-        for f in glob.glob('**/*.axaml', recursive=True) + glob.glob('**/*.cs', recursive=True):
-            if 'bin' in f or 'obj' in f or f.endswith('App.axaml.cs'): continue
+        for f in glob.glob('**/*.axaml', recursive=True):
+            if 'bin' in f or 'obj' in f: continue
             with open(f, 'r', encoding='utf-8') as file: c = file.read()
             modified = False
-            if '.Items' in c:
-                c = c.replace('.Items', '.ItemsSource').replace('.ItemsSourceSource', '.ItemsSource')
-                modified = True
             if 'Items="' in c:
                 c = c.replace('Items="', 'ItemsSource="')
                 modified = True
@@ -181,7 +155,7 @@ jobs:
             if modified:
                 with open(f, 'w', encoding='utf-8') as file: file.write(c)
 
-        # 5. Configuration du projet
+        # 5. Configuration finale du projet Android
         for file in glob.glob('**/*.csproj', recursive=True):
             if 'bin' in file or 'obj' in file: continue
             proj_dir = os.path.dirname(file)
